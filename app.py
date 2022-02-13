@@ -214,6 +214,8 @@ def update_liv(id):
 
 ###########################################
 # Modifier les informations d'une categorie
+#insert into "Categories" (id,libelle_categorie)
+#values(1,'TEST DE LA BD')
 ###########################################
 
 @app.route('/categories/<int:id>', methods=['PATCH'])
@@ -315,7 +317,4 @@ def bad_request(error):
         "error": 400,
         "message": "Bad Request"
         }), 400
-
-if __name__ == '__main__':
-    app.run(host='localhost', port=5000, debug=False)
 
