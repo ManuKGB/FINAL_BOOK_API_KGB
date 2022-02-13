@@ -3,7 +3,6 @@ Flask_Migrate==3.1.0
 Flask_SQLAlchemy==2.5.1
 gunicorn
 
-apturl==0.5.2
 astroid==2.5.1
 autopep8==1.6.0
 awscli==1.19.1
