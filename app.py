@@ -3,7 +3,7 @@ from flask import Flask,jsonify,abort,request
 from flask_migrate import Migrate
 from flask_sqlalchemy import Pagination, SQLAlchemy 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI']="postgresql://postgres:root@localhost:5432/bibliotheque"
+app.config['SQLALCHEMY_DATABASE_URI']="postgres://mbwlzsgyrpsfuy:9fc7e0fbfa2cf4273495575c9eca027817db3755e72a2a41bc05811270f27acd@ec2-34-205-46-149.compute-1.amazonaws.com:5432/d6nsu3s2olfctj"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
