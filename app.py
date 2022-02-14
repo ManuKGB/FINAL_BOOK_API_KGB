@@ -205,17 +205,13 @@ def create_app(test_config=None):
         return jsonify({
             'books': titre
         })
+	
 
-    @app.route('/categories', methods=['POST'])
-    def add_category():
-        body = request.get_json()
-        new_categorie = body['libelle_categorie']
-        category = Category(libelle_categorie=new_categorie)
-        category.insert()
+    @app.route('/')
+    def index():
         return jsonify({
             'success': True,
-            'added': category.format(),
-            'total_categories': Category.query.count()
+            'State': 'Bienvenue sur l'API DE KGB'     
         })
 
     @app.route('/livres', methods=['POST'])
