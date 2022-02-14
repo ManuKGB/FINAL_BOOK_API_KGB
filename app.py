@@ -1,320 +1,254 @@
-# -*- coding: utf-8 -*-
-from flask import Flask,jsonify,abort,request
+from models import Book, Category, setup_db, db
+from flask import Flask
+from flask import jsonify, request, abort
 from flask_migrate import Migrate
-from flask_sqlalchemy import Pagination, SQLAlchemy 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI']="postgres://mbwlzsgyrpsfuy:9fc7e0fbfa2cf4273495575c9eca027817db3755e72a2a41bc05811270f27acd@ec2-34-205-46-149.compute-1.amazonaws.com:5432/d6nsu3s2olfctj"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS']=False
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+from flask_cors import CORS
 
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Headers',
-                         'Content-Type,Authorization,true')
-    response.headers.add('Access-Control-Allow-Methods',
-                         'GET,PUT,POST,DELETE,OPTIONS,PATCH')
-    return response
-
-class Categorie(db.Model):
-    __tablename__ = 'Categories'
-    id = db.Column(db.Integer, primary_key=True)
-    libelle_categorie = db.Column(db.String(50), nullable=False)
-    def __init__(self, libelle_categorie):
-        self.libelle_categorie = libelle_categorie
-
-    def insert(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        #db.session.commit()
-
-    def format(self):
-        return {
-            'id': self.id,
-            'libelle_categorie': self.libelle_categorie
-        }
+#############################################################
+# fonction permettant d'afficher les éléments d'une liste
+#############################################################
 
 
-class Livre(db.Model):
-    __tablename__ = 'Livres'
-    id = db.Column(db.Integer, primary_key=True)
-    isbn = db.Column(db.String(50), nullable=False)
-    titre = db.Column(db.String(100), unique=True)
-    date_publication = db.Column(db.String(12), nullable=False)
-    auteur = db.Column(db.String(50),nullable=False)
-    editeur = db.Column(db.String(50),nullable=False)
-    categorie_id = db.Column(db.Integer,  db.ForeignKey(Categorie.id) )
-    def __init__(self, isbn, titre,date_publication,auteur,editeur,categorie_id):
-        self.isbn=isbn
-        self.titre=titre
-        self.date_publication=date_publication
-        self.auteur=auteur
-        self.editeur=editeur
-        self.categorie_id=categorie_id
-
-    def insert(self):
-        db.session.add(self)
-        db.session.commit()
-
-    def update(self):
-        db.session.commit()
-
-    def delete(self):
-        db.session.delete(self)
-        #db.session.commit()
-
-    def format(self):
-        c1=Categorie.query.get(self.categorie_id)
-        return {
-            'Id': self.id,
-            'Isbn': self.isbn,
-            'Titre': self.titre,
-            'Date_publication': self.date_publication,
-            'Auteur': self.auteur,
-            'Editeur': self.editeur,
-            'Categorie_livre': c1.libelle_categorie
-        }
-db.create_all()
-
-
-#######################################
-    # Lister toutes les categories
-#######################################
-
-
-@app.route("/categories")
-def get_all_cats():
-    cat = Categorie.query.all()
-    cat = [c.format() for c in cat]
-    return jsonify(
-
-        {
-            
-            'success': True,
-            'Categorie': cat,
-            'nombre Total de categorie': len(Categorie.query.all())
-
-        }
-
-    )
-    
+def paginate(request):
+    items = [item.format() for item in request]
+    return items
 
 ##############################
 # Lister tous les livres
 ##############################
 
 
-@app.route("/livres/")
-def get_all_liv():
-    l = Livre.query.all()
-    l = [c.format() for c in l]
-    return jsonify(
+def create_app(test_config=None):
+    app = Flask(__name__)
+    setup_db(app)
+    migrate = Migrate(app, db)
+    CORS(app)
 
-        {
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Headers',
+                             'Content-Type,Authorization,true')
+        response.headers.add('Access-Control-Allow-Methods',
+                             'GET,PUT,POST,DELETE,OPTIONS')
+        return response
 
-            'success': True,
-            'Livre': l,
-            'nombre Total de Livres': len(Livre.query.all())
-
-        }
-
-    )
-
-
-
-#################################################
-## Chercher un livre en particulier par son id
-#################################################
-
-
-@app.route('/livres/<int:ID>')
-def get_one_liv(ID):
-    try:
-        l1 = Livre.query.get(ID)
-        return jsonify(
-            {
-                'success': True,
-                'Livre': l1.format()
-            }
-        )  
-    except:
-        abort(400)
-
-
- ########################################
-# Chercher une categorie par son id
-########################################
-
-@app.route('/categories/<int:ID>')
-def get_one_cat(ID):
-    try:
-        c1 = Categorie.query.get(ID)
-        return jsonify(
-            {
-                'success': True,
-                'Categorie': c1.format()
-            }
-        )  
-    except:
-        abort(400)
-
-
-
-
-################################################
-## Lister les livres d'une categorie
-################################################
-
-
-@app.route('/categories/<int:ID>/livres')
-def get_liv_cat(ID):
-    x=Livre.query.filter(Livre.categorie_id==ID).all()        
-    try:
-        e=0
-        return jsonify(
-            {
-                'success': True,
-                'Livre': [c.format() for c in x],
-                'Nombre de livre de la categorie ':len(x)
-            }
-        )  
-    except:
-        abort(400)  
-
-###########################################
-    # Modifier les informations d'un livre
-###########################################
-
-@app.route('/livres/<int:id>', methods=['PATCH'])
-def update_liv(id):
-    Body = request.get_json()
-    book=Livre.query.get(id)
-    try:
-        if  'Titre'  in Body and 'Isbn' in Body and 'Date_publication' in Body and 'Auteur' in Body and 'Editeur'  in Body:
-            book.isbn = Body['Isbn']
-            book.titre = Body['Titre']
-            book.date_publication = Body['Date_publication']
-            book.auteur = Body['Auteur']
-            book.editeur = Body['Editeur']
-              
-        book.update()
+    """@app.route('/v1/')
+    def welcome():
         return jsonify({
-            'success': True,
-            'Livre_modifie': book.format()
-        })
-    except:
-        abort(400)
+            "message": "WELCOME !",
+            "name": "bookapi",
+            "version": 1,
+            "read":"https://github.com/arnaud2210/BOOKS_APIs_V1"
+        })"""
 
-
-###########################################
-# Modifier les informations d'une categorie
-#insert into "Categories" (id,libelle_categorie)
-#values(1,'TEST DE LA BD')
-###########################################
-
-@app.route('/categories/<int:id>', methods=['PATCH'])
-def update_cat(id):
-    Body = request.get_json()
-    cat=Categorie.query.get(id)
-    try:
-        if 'libelle_categorie' in Body :
-            cat.libelle_categorie = Body['libelle_categorie']
-              
-        cat.update()
-        return jsonify({
-            'success': True,
-            'Categorie_Modifie': cat.format()
-        })
-    except:
-        abort(400)
-
-
-############################
-    # Supprimer un livre
-############################
-
-
-@app.route('/livres/<int:id>', methods=['DELETE'])
-def supprimer_livre(id):
-    try:
-        mon_livre = Livre.query.get(id)
-        if mon_livre is None:
-            abort(404)
-        else:
-            mon_livre.delete()
-            return jsonify(
-                {
-                "success": True,
-                "deleted_id": id,
-                "Livre_restant": len(Livre.query.all())
-                }
-            )
-    except:
-        abort(400)
-    finally:
-        db.session.close()
-
-
-#############################
-    # Supprimer une categorie
-################################# 
-           
-
-@app.route('/categories/<int:id>', methods=['DELETE'])
-def del_category(id):
+    @app.route('/books')
+    def get_books():
         try:
-            category = Categorie.query.get(id)
-            category.delete()
-            return jsonify(
-                {       
+            books = Book.query.all()
+            books = paginate(books)
+            return jsonify({
                 'success': True,
-                'status': 200,
-                'id_cat_deleted': id,
-                'Categories_restantes': Categorie.query.count()
-                }
-            )
+                'status_code': 200,
+                'books': books,
+                'total_books': len(books)
+            })
         except:
             abort(404)
         finally:
             db.session.close()
 
+    #################################################
+    # Chercher un livre en particulier par son id
+    #################################################
 
+    @app.route('/books/<int:id>')
+    def get_book(id):
+        book = Book.query.get(id)
+        if book is None:
+            abort(404)
+        else:
+            return book.format()
 
+    ################################################
+    # Lister la liste des livres d'une categorie
+    ################################################
 
-@app.route('/',methods=['GET'])
-def index():
-   return "Heloo"
+    @app.route('/categories/<int:id>/books')
+    def book_category(id):
+        try:
+            category = Category.query.get(id)
+            books = Book.query.filter_by(categorie_id=id).all()
+            books = paginate(books)
+            return jsonify({
+                'Success': True,
+                'Status_code': 200,
+                'total': len(books),
+                'classe': category.format(),
+                'books': books
+            })
+        except:
+            abort(404)
+        finally:
+            db.session.close()
 
+    #######################################
+    # Lister toutes les categories
+    #######################################
 
+    @app.route('/categories')
+    def get_categories():
+        categories = Category.query.all()
+        categories = paginate(categories)
+        if categories is None:
+            abort(404)
+        else:
+            return jsonify({
+                'success': True,
+                'status_code': 200,
+                'category': categories,
+                'total': len(categories)
+            })
 
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({
-        "success": False, 
-        "error": 404,
-        "message": "Not found"
+    ########################################
+    # Chercher une categorie par son id
+    ########################################
+
+    @app.route('/categories/<int:id>')
+    def get_category(id):
+        category = Category.query.get(id)
+        if category is None:
+            abort(404)
+        else:
+            return category.format()
+
+    ############################
+    # Supprimer un livre
+    ############################
+
+    @app.route('/books/<int:id>', methods=['DELETE'])
+    def del_book(id):
+        try:
+            book = Book.query.get(id)
+            book.delete()
+            return jsonify({
+                'success': True,
+                'id_book': id,
+                'new_total': Book.query.count()
+            })
+        except:
+            abort(404)
+        finally:
+            db.session.close()
+
+    #############################
+    # Supprimer une categorie
+    #############################
+
+    @app.route('/categories/<int:id>', methods=['DELETE'])
+    def del_category(id):
+        try:
+            category = Category.query.get(id)
+            category.delete()
+            return jsonify({
+                'success': True,
+                'status': 200,
+                'id_cat': id,
+                'new_total': Category.query.count()
+            })
+        except:
+            abort(404)
+        finally:
+            db.session.close()
+
+    ###########################################
+    # Modifier les informations d'un livre
+    ###########################################
+
+    @app.route('/books/<int:id>', methods=['PATCH'])
+    def change_book(id):
+        body = request.get_json()
+        book = Book.query.get(id)
+        try:
+            if 'titre' in body and 'auteur' in body and 'editeur' in body:
+                book.titre = body['titre']
+                book.auteur = body['auteur']
+                book.editeur = body['editeur']
+            book.update()
+            return book.format()
+        except:
+            abort(404)
+
+    ########################################
+    # Modifier le libellé d'une categorie
+    ########################################
+
+    @app.route('/categories/<int:id>', methods=['PATCH'])
+    def change_name(id):
+        body = request.get_json()
+        category = Category.query.get(id)
+        try:
+            if 'categorie' in body:
+                category.libelle_categorie = body['categorie']
+            category.update()
+            return category.format()
+        except:
+            abort(404)
+
+    ##############################################
+    # Rechercher un livre par son titre ou son auteur
+    ##############################################
+    @app.route('/books/<string:word>')
+    def search_book(word):
+        mot = '%'+word+'%'
+        titre = Book.query.filter(Book.titre.like(mot)).all()
+        titre = paginate(titre)
+        return jsonify({
+            'books': titre
+        })
+
+    @app.route('/categories', methods=['POST'])
+    def add_category():
+        body = request.get_json()
+        new_categorie = body['libelle_categorie']
+        category = Category(libelle_categorie=new_categorie)
+        category.insert()
+        return jsonify({
+            'success': True,
+            'added': category.format(),
+            'total_categories': Category.query.count()
+        })
+
+    @app.route('/books', methods=['POST'])
+    def add_book():
+        body = request.get_json()
+        isbn = body['code_ISBN']
+        new_titre = body['titre']
+        new_date = body['date_publication']
+        new_auteur = body['auteur']
+        new_editeur = body['editeur']
+        categorie_id = body['categorie_id']
+        book = Book(isbn=isbn, titre=new_titre, date_publication=new_date,
+                    auteur=new_auteur, editeur=new_editeur, categorie_id=categorie_id)
+        book.insert()
+        count = Book.query.count()
+        return jsonify({
+            'success': True,
+            'added': book.format(),
+            'total_books': count,
+        })
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            'success': False,
+            'error': 404,
+            'message': "Ressource non disponible"
         }), 404
-    
-@app.errorhandler(500)
-def server_error(error):
-    return jsonify({
-        "success": False, 
-        "error": 500,
-        "message": "Internal server error"
-        }), 500
+
+    return app
 
 
-@app.errorhandler(400)
-def bad_request(error):
-    return jsonify({
-        "success": False, 
-        "error": 400,
-        "message": "Bad Request"
-        }), 400
+app = create_app()
 
+if __name__ == '__main__':
+    app.run(host='localhost', port=5000, debug=False)
