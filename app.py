@@ -41,7 +41,7 @@ def create_app(test_config=None):
             "read":"https://github.com/arnaud2210/BOOKS_APIs_V1"
         })"""
 
-    @app.route('/books')
+    @app.route('/livres')
     def get_books():
         try:
             books = Book.query.all()
@@ -61,7 +61,7 @@ def create_app(test_config=None):
     # Chercher un livre en particulier par son id
     #################################################
 
-    @app.route('/books/<int:id>')
+    @app.route('/livres/<int:id>')
     def get_book(id):
         book = Book.query.get(id)
         if book is None:
@@ -73,7 +73,7 @@ def create_app(test_config=None):
     # Lister la liste des livres d'une categorie
     ################################################
 
-    @app.route('/categories/<int:id>/books')
+    @app.route('/categories/<int:id>/livres')
     def book_category(id):
         try:
             category = Category.query.get(id)
@@ -125,7 +125,7 @@ def create_app(test_config=None):
     # Supprimer un livre
     ############################
 
-    @app.route('/books/<int:id>', methods=['DELETE'])
+    @app.route('/livres/<int:id>', methods=['DELETE'])
     def del_book(id):
         try:
             book = Book.query.get(id)
@@ -164,7 +164,7 @@ def create_app(test_config=None):
     # Modifier les informations d'un livre
     ###########################################
 
-    @app.route('/books/<int:id>', methods=['PATCH'])
+    @app.route('/livres/<int:id>', methods=['PATCH'])
     def change_book(id):
         body = request.get_json()
         book = Book.query.get(id)
@@ -197,7 +197,7 @@ def create_app(test_config=None):
     ##############################################
     # Rechercher un livre par son titre ou son auteur
     ##############################################
-    @app.route('/books/<string:word>')
+    @app.route('/livres/<string:word>')
     def search_book(word):
         mot = '%'+word+'%'
         titre = Book.query.filter(Book.titre.like(mot)).all()
@@ -218,7 +218,7 @@ def create_app(test_config=None):
             'total_categories': Category.query.count()
         })
 
-    @app.route('/books', methods=['POST'])
+    @app.route('/livres', methods=['POST'])
     def add_book():
         body = request.get_json()
         isbn = body['code_ISBN']
