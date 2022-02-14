@@ -207,13 +207,6 @@ def create_app(test_config=None):
         })
 	
 
-    @app.route('/')
-    def index():
-        return jsonify({
-            'success': True,
-            'State': 'Bienvenue sur l'API DE KGB'     
-        })
-
     @app.route('/livres', methods=['POST'])
     def add_book():
         body = request.get_json()
